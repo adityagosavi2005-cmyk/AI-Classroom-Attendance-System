@@ -20,12 +20,27 @@ def create_teacher(username, password, name):
     return response.data
 
 def teacher_login(username, password):
+
+    print("Entered username:", repr(username))
+
     response = supabase.table("teachers").select("*").eq("username", username).execute()
+
+    print("Query result:", response.data)
+
+    all_teachers = supabase.table("teachers").select("*").execute()
+
+    print("All teachers:", all_teachers.data)
+
     if response.data:
         teacher = response.data[0]
+
+        print("Stored username:", repr(teacher["username"]))
+        print("Password match:", check_pass(password, teacher["password"]))
+
         if check_pass(password, teacher["password"]):
             return teacher
-        return None
+
+    return None
 
 def get_all_students():
     response = supabase.table("students").select("*").execute()
@@ -34,7 +49,7 @@ def get_all_students():
 def create_student(new_name, face_embedding=None, voice_embedding=None):
     data = {'name':new_name, 'face_embedding':face_embedding, 'voice_embedding':voice_embedding}
     response = supabase.table('students').insert(data).execute()
-    return response.data
+    return response.data[0]
 
 def create_subject(subject_code, sub_name, section, teacher_id):
     data = {'subject_code':subject_code, 'name':sub_name, 'section': section, 'teacher_id': teacher_id}
@@ -48,7 +63,7 @@ def get_teacher_subjects(teacher_id):
     for sub in subjects:
         sub['total_students'] = sub.get("subject_students",[{}])[0].get('count',0) if sub.get('subject_students') else 0
         attendance = sub.get('attendance_logs',[])
-        unique_sessions = len(set(log['timestamps'] for log in attendance))
+        unique_sessions = len(set(log['timestamp'] for log in attendance))
         sub['total_classes'] = unique_sessions
 
         sub.pop('subject_student',None)
@@ -75,4 +90,8 @@ def get_student_subjects(student_id):
 
 def get_student_attendance(student_id):
     response = supabase.table('attendance_logs').select('*, subjects(*)').eq('student_id', student_id).execute()
+    return response.data
+
+def create_attendance(logs):
+    response = supabase.table("attendance_logs").insert(logs).execute()
     return response.data
